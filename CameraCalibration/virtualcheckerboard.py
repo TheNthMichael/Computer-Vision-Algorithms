@@ -27,8 +27,10 @@ def calibration(images, square_size, width, height):
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane.
+    w, h = 1280, 720
 
     for img in images:
+        h, w, _ = img.shape
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Find the chess board corners
@@ -45,6 +47,32 @@ def calibration(images, square_size, width, height):
             img = cv2.drawChessboardCorners(img, (width, height), corners2, ret)
 
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+
+    newcameramatrix, roi = cv2.getOptimalNewCameraMatrix(
+        mtx, dist, (w, h), 1, (w, h)
+    )
+
+    webcam = cv2.VideoCapture(0)
+
+    while(True):
+        ret, frame = webcam.read()
+        if not ret:
+            continue
+
+        # undistort
+        dst = cv2.undistort(frame, mtx, dist, None, newcameramatrix)
+
+        # crop the image
+        x,y,w,h = roi
+        dst = dst[y:y+h, x:x+w]
+
+        cv2.imshow('frame', dst)
+        
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
+            break
+    
+    webcam.release()
 
     return [ret, mtx, dist, rvecs, tvecs]
 
